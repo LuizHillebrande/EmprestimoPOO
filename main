@@ -1,0 +1,276 @@
+import java.util.Scanner;
+import java.util.List;
+import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
+abstract class User {
+    private final String name;
+    private final String email;
+    private final String cpf;
+
+    public User(String name, String email, String cpf) {
+        this.name = name;
+        this.email = email;
+        this.cpf = cpf;
+    }
+
+    public String getName() { return name; }
+    public String getEmail() { return email; }
+    public String getCPF() { return cpf; }
+
+    public abstract void displayInfo();
+}
+
+class Account extends User {
+    private final String password;
+
+    public Account(String name, String email, String cpf, String password) {
+        super(name, email, cpf);
+        this.password = password;
+    }
+
+    @Override
+    public void displayInfo() {
+        System.out.println("Informações da Conta: [ Nome: " + getName() + " || Email: " + getEmail() + " || CPF: " + getCPF() + " ]");
+    }
+
+    public void displayInfo(boolean showPassword) {
+        if (showPassword) {
+            System.out.println("Informações da Conta: [ Nome: " + getName() + " || Email: " + getEmail() + " || Senha: " + password + " || CPF: " + getCPF() + " ]");
+        } else {
+            displayInfo();
+        }
+    }
+
+    public String getPassword() { return password; }
+}
+
+class Equipment {
+    private final String name;
+    private boolean isAvailable;
+
+    public Equipment(String name) {
+        this.name = name;
+        this.isAvailable = true;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean isAvailable() {
+        return isAvailable;
+    }
+
+    public void borrow() {
+        isAvailable = false;
+    }
+
+    public void returnEquipment() {
+        isAvailable = true;
+    }
+}
+
+class Loan {
+    private final Equipment equipment;
+    private final User user;
+    private final LocalDate loanDate;
+    private final LocalDate returnDate;
+
+    public Loan(Equipment equipment, User user, LocalDate returnDate) {
+        this.equipment = equipment;
+        this.user = user;
+        this.loanDate = LocalDate.now();
+        this.returnDate = returnDate;
+    }
+
+    public Equipment getEquipment() {
+        return equipment;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public LocalDate getLoanDate() {
+        return loanDate;
+    }
+
+    public LocalDate getReturnDate() {
+        return returnDate;
+    }
+
+    public void displayLoanInfo() {
+        System.out.println("Empréstimo: [ Equipamento: " + equipment.getName() + 
+                           " || Usuário: " + user.getName() + 
+                           " || Data do Empréstimo: " + loanDate + 
+                           " || Data de Retorno: " + returnDate + " ]");
+    }
+}
+
+public class Main {
+    private static List<Equipment> equipmentList = new ArrayList<>();
+    private static List<Loan> loans = new ArrayList<>();
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        List<User> users = new ArrayList<>();
+
+        // Adiciona alguns equipamentos ao sistema
+        equipmentList.add(new Equipment("Projetor"));
+        equipmentList.add(new Equipment("Microfone"));
+        equipmentList.add(new Equipment("Laptop"));
+
+        while (true) {
+            printTitle();
+            System.out.println("1. Cadastrar");
+            System.out.println("2. Login");
+            System.out.println("3. Sair");
+
+            System.out.print("[ENTER]: ");
+            int option = sc.nextInt();
+            sc.nextLine();
+            clean();
+
+            if (option == 1) cadaster(sc, users);
+            else if (option == 2) login(sc, users);
+            else if (option == 3) break;
+            clean();
+        }
+        sc.close();
+    }
+
+    public static void printTitle() {
+        System.out.println("= = = = = = = = = = =");
+        System.out.println("Gestão de Biblioteca");
+        System.out.println("= = = = = = = = = = =\n");
+    }
+
+    public static void clean() {
+        System.out.print("\n".repeat(20));
+    }
+
+    public static void cadaster(Scanner sc, List<User> users) {
+        System.out.print("Nome: ");
+        String name = sc.nextLine();
+        while (name.isEmpty()) {
+            System.out.println("[Aviso: O nome está vazio, preencha o nome..]");
+            System.out.print("Nome: ");
+            name = sc.nextLine();
+        }
+
+        System.out.print("Email: ");
+        String email = sc.nextLine();
+        while (!email.matches("^[^@]+@gmail\\.com$")) {
+            System.out.println("[Aviso: Seu e-mail é inválido, insira novamente...]");
+            System.out.print("Email: ");
+            email = sc.nextLine();
+        }
+
+        System.out.print("CPF: ");
+        String cpf = sc.nextLine();
+        while (!isValidCPF(cpf)) {
+            System.out.println("[Aviso: Seu CPF é inválido, insira novamente...]");
+            System.out.print("CPF: ");
+            cpf = sc.nextLine();
+        }
+
+        System.out.print("Senha: ");
+        String password = sc.nextLine();
+
+        Account newAccount = new Account(name, email, cpf, password);
+        users.add(newAccount);
+        newAccount.displayInfo();
+        System.out.println("[Aviso: Usuário criado!]");
+    }
+
+    public static boolean isValidCPF(String cpf) {
+        return cpf.matches("\\d{11}"); // Simples verificação de formato
+    }
+
+    public static void login(Scanner sc, List<User> users) {
+        if (users.isEmpty()) {
+            System.out.println("[Aviso: Não há contas cadastradas.]");
+            return;
+        }
+
+        boolean different = true;
+        for (int attempts = 1; different && attempts <= 3; attempts++) {
+            System.out.print("Nome: ");
+            String name = sc.nextLine();
+            System.out.print("Senha: ");
+            String password = sc.nextLine();
+
+            for (User u : users) {
+                if (u.getName().equals(name)) {
+                    if (u instanceof Account && ((Account) u).getPassword().equals(password)) {
+                        System.out.println("[Aviso: Login bem-sucedido!]");
+                        // Pergunta ao usuário se deseja emprestar um equipamento
+                        System.out.print("Deseja emprestar um equipamento? (s/n): ");
+                        char choice = sc.nextLine().toLowerCase().charAt(0);
+                        if (choice == 's') {
+                            borrowEquipment(sc, u);
+                        }
+                        different = false;
+                        break;
+                    }
+                }
+            }
+
+            if (different) System.out.println("[Aviso: Nome ou senha incorretos.]");
+
+            if (attempts == 3) {
+                System.out.print("Esqueceu a senha? Tente com o email: ");
+                String email = sc.nextLine();
+                if (users.stream().anyMatch(u -> u.getEmail().equals(email))) {
+                    System.out.println("[Aviso: Link de redefinição de senha enviado.]");
+                } else {
+                    System.out.println("[Aviso: Email não encontrado.]");
+                }
+            }
+        }
+    }
+
+    public static void borrowEquipment(Scanner sc, User user) {
+        System.out.println("Equipamentos disponíveis:");
+        for (Equipment equipment : equipmentList) {
+            if (equipment.isAvailable()) {
+                System.out.println("- " + equipment.getName());
+            }
+        }
+
+        System.out.print("Escolha um equipamento para emprestar: ");
+        String equipmentName = sc.nextLine();
+
+        for (Equipment equipment : equipmentList) {
+            if (equipment.getName().equalsIgnoreCase(equipmentName) && equipment.isAvailable()) {
+                equipment.borrow();
+
+                // Solicita a data de devolução
+                LocalDate returnDate = null;
+                while (returnDate == null) {
+                    System.out.print("Digite a data de devolução (formato: yyyy-MM-dd): ");
+                    String dateInput = sc.nextLine();
+                    try {
+                        returnDate = LocalDate.parse(dateInput, DateTimeFormatter.ISO_LOCAL_DATE);
+                        if (returnDate.isBefore(LocalDate.now())) {
+                            System.out.println("[Aviso: A data de devolução não pode ser anterior a hoje.]");
+                            returnDate = null;
+                        }
+                    } catch (DateTimeParseException e) {
+                        System.out.println("[Aviso: Data inválida, tente novamente.]");
+                    }
+                }
+
+                Loan newLoan = new Loan(equipment, user, returnDate);
+                loans.add(newLoan);
+                System.out.println("Equipamento " + equipmentName + " emprestado com sucesso para " + user.getName() + ".");
+                newLoan.displayLoanInfo();
+                return;
+            }
+        }
+        System.out.println("Equipamento não disponível ou não encontrado.");
+    }
+}
