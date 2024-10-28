@@ -4,129 +4,21 @@ import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-
-abstract class User {
-    private final String name;
-    private final String email;
-    private final String cpf;
-
-    public User(String name, String email, String cpf) {
-        this.name = name;
-        this.email = email;
-        this.cpf = cpf;
-    }
-
-    public String getName() { return name; }
-    public String getEmail() { return email; }
-    public String getCPF() { return cpf; }
-
-    public abstract void displayInfo();
-}
-
-class Account extends User {
-    private final String password;
-
-    public Account(String name, String email, String cpf, String password) {
-        super(name, email, cpf);
-        this.password = password;
-    }
-
-    @Override
-    public void displayInfo() {
-        System.out.println("Informações da Conta: [ Nome: " + getName() + " || Email: " + getEmail() + " || CPF: " + getCPF() + " ]");
-    }
-
-    public void displayInfo(boolean showPassword) {
-        if (showPassword) {
-            System.out.println("Informações da Conta: [ Nome: " + getName() + " || Email: " + getEmail() + " || Senha: " + password + " || CPF: " + getCPF() + " ]");
-        } else {
-            displayInfo();
-        }
-    }
-
-    public String getPassword() { return password; }
-}
-
-class Equipment {
-    private final String name;
-    private boolean isAvailable;
-
-    public Equipment(String name) {
-        this.name = name;
-        this.isAvailable = true;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
-    public void borrow() {
-        isAvailable = false;
-    }
-
-    public void returnEquipment() {
-        isAvailable = true;
-    }
-}
-
-class Loan {
-    private final Equipment equipment;
-    private final User user;
-    private final LocalDate loanDate;
-    private final LocalDate returnDate;
-
-    public Loan(Equipment equipment, User user, LocalDate returnDate) {
-        this.equipment = equipment;
-        this.user = user;
-        this.loanDate = LocalDate.now();
-        this.returnDate = returnDate;
-    }
-
-    public Equipment getEquipment() {
-        return equipment;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public LocalDate getLoanDate() {
-        return loanDate;
-    }
-
-    public LocalDate getReturnDate() {
-        return returnDate;
-    }
-
-    public void displayLoanInfo() {
-        System.out.println("Empréstimo: [ Equipamento: " + equipment.getName() + 
-                           " || Usuário: " + user.getName() + 
-                           " || Data do Empréstimo: " + loanDate + 
-                           " || Data de Retorno: " + returnDate + " ]");
-    }
-}
+import java.util.stream.Collectors;
 
 public class Main {
     private static List<Equipment> equipmentList = new ArrayList<>();
     private static List<Loan> loans = new ArrayList<>();
+    private static User loggedInUser = null; // Variável para armazenar o usuário logado
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         List<User> users = new ArrayList<>();
 
-        // Adiciona alguns equipamentos ao sistema
-        equipmentList.add(new Equipment("Projetor"));
-        equipmentList.add(new Equipment("Microfone"));
-        equipmentList.add(new Equipment("Laptop"));
-
         while (true) {
             printTitle();
-            System.out.println("1. Cadastrar");
-            System.out.println("2. Login");
+            System.out.println("1. Cadastrar Usuário");
+            System.out.println("2. Fazer Login");
             System.out.println("3. Sair");
 
             System.out.print("[ENTER]: ");
@@ -134,12 +26,80 @@ public class Main {
             sc.nextLine();
             clean();
 
-            if (option == 1) cadaster(sc, users);
-            else if (option == 2) login(sc, users);
-            else if (option == 3) break;
+            switch (option) {
+                case 1: 
+                    cadaster(sc, users);
+                    break;
+                case 2: 
+                    if (login(sc, users)) {
+                        userMenu(sc, users);
+                    }
+                    break;
+                case 3: 
+                    System.out.println("Saindo do sistema...");
+                    sc.close();
+                    return;
+                default: 
+                    System.out.println("[Aviso: Opção inválida.]");
+            }
             clean();
         }
-        sc.close();
+    }
+
+    public static void userMenu(Scanner sc, List<User> users) {
+        while (true) {
+            printTitle();
+            System.out.println("1. Cadastrar Equipamento");
+            System.out.println("2. Emprestar Equipamento");
+            System.out.println("3. Devolver Equipamento");
+            System.out.println("4. Sair");
+
+            System.out.print("[ENTER]: ");
+            int option = sc.nextInt();
+            sc.nextLine();
+            clean();
+
+            switch (option) {
+                case 1: 
+                    registerEquipment(sc);
+                    break;
+                case 2: 
+                    borrowEquipment(sc, users);
+                    break;
+                case 3: 
+                    returnEquipment(sc, users);
+                    break;
+                case 4: 
+                    System.out.println("Desconectando...");
+                    loggedInUser = null; // Limpa a sessão do usuário
+                    return; // Retorna ao menu principal
+                default: 
+                    System.out.println("[Aviso: Opção inválida.]");
+            }
+            clean();
+        }
+    }
+
+    public static boolean login(Scanner sc, List<User> users) {
+        System.out.print("Nome: ");
+        String name = sc.nextLine();
+
+        System.out.print("Senha: ");
+        String password = sc.nextLine();
+
+        for (User user : users) {
+            if (user.getName().equalsIgnoreCase(name) && user instanceof Account) {
+                Account account = (Account) user;
+                if (account.getPassword().equals(password)) {
+                    loggedInUser = account; // Armazena o usuário logado
+                    System.out.println("[Aviso: Login bem-sucedido!]");
+                    return true;
+                }
+            }
+        }
+
+        System.out.println("[Aviso: Nome ou senha inválidos.]");
+        return false;
     }
 
     public static void printTitle() {
@@ -190,50 +150,25 @@ public class Main {
         return cpf.matches("\\d{11}"); // Simples verificação de formato
     }
 
-    public static void login(Scanner sc, List<User> users) {
-        if (users.isEmpty()) {
-            System.out.println("[Aviso: Não há contas cadastradas.]");
+    public static void registerEquipment(Scanner sc) {
+        System.out.print("Nome do Equipamento: ");
+        String equipmentName = sc.nextLine();
+        Equipment newEquipment = new Equipment(equipmentName);
+        equipmentList.add(newEquipment);
+        System.out.println("[Aviso: Equipamento " + equipmentName + " cadastrado com sucesso!]");
+    }
+
+    public static void borrowEquipment(Scanner sc, List<User> users) {
+        if (equipmentList.isEmpty()) {
+            System.out.println("[Aviso: Não há equipamentos cadastrados.]");
             return;
         }
 
-        boolean different = true;
-        for (int attempts = 1; different && attempts <= 3; attempts++) {
-            System.out.print("Nome: ");
-            String name = sc.nextLine();
-            System.out.print("Senha: ");
-            String password = sc.nextLine();
-
-            for (User u : users) {
-                if (u.getName().equals(name)) {
-                    if (u instanceof Account && ((Account) u).getPassword().equals(password)) {
-                        System.out.println("[Aviso: Login bem-sucedido!]");
-                        // Pergunta ao usuário se deseja emprestar um equipamento
-                        System.out.print("Deseja emprestar um equipamento? (s/n): ");
-                        char choice = sc.nextLine().toLowerCase().charAt(0);
-                        if (choice == 's') {
-                            borrowEquipment(sc, u);
-                        }
-                        different = false;
-                        break;
-                    }
-                }
-            }
-
-            if (different) System.out.println("[Aviso: Nome ou senha incorretos.]");
-
-            if (attempts == 3) {
-                System.out.print("Esqueceu a senha? Tente com o email: ");
-                String email = sc.nextLine();
-                if (users.stream().anyMatch(u -> u.getEmail().equals(email))) {
-                    System.out.println("[Aviso: Link de redefinição de senha enviado.]");
-                } else {
-                    System.out.println("[Aviso: Email não encontrado.]");
-                }
-            }
+        if (loggedInUser == null) {
+            System.out.println("[Aviso: Você precisa fazer login primeiro.]");
+            return;
         }
-    }
 
-    public static void borrowEquipment(Scanner sc, User user) {
         System.out.println("Equipamentos disponíveis:");
         for (Equipment equipment : equipmentList) {
             if (equipment.isAvailable()) {
@@ -251,26 +186,54 @@ public class Main {
                 // Solicita a data de devolução
                 LocalDate returnDate = null;
                 while (returnDate == null) {
-                    System.out.print("Digite a data de devolução (formato: yyyy-MM-dd): ");
+                    System.out.print("Digite a data de devolução (formato: dd/MM/yyyy): ");
                     String dateInput = sc.nextLine();
                     try {
-                        returnDate = LocalDate.parse(dateInput, DateTimeFormatter.ISO_LOCAL_DATE);
+                        returnDate = LocalDate.parse(dateInput, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
                         if (returnDate.isBefore(LocalDate.now())) {
                             System.out.println("[Aviso: A data de devolução não pode ser anterior a hoje.]");
-                            returnDate = null;
+                            returnDate = null; // Reinicia a variável para solicitar novamente
                         }
                     } catch (DateTimeParseException e) {
-                        System.out.println("[Aviso: Data inválida, tente novamente.]");
+                        System.out.println("[Aviso: Formato de data inválido. Tente novamente.]");
                     }
                 }
 
-                Loan newLoan = new Loan(equipment, user, returnDate);
-                loans.add(newLoan);
-                System.out.println("Equipamento " + equipmentName + " emprestado com sucesso para " + user.getName() + ".");
-                newLoan.displayLoanInfo();
+                Loan loan = new Loan(equipment, loggedInUser, returnDate);
+                loans.add(loan);
+                System.out.println("[Aviso: Empréstimo realizado com sucesso!]");
                 return;
             }
         }
-        System.out.println("Equipamento não disponível ou não encontrado.");
+
+        System.out.println("[Aviso: Equipamento não encontrado ou não disponível.]");
+    }
+
+    public static void returnEquipment(Scanner sc, List<User> users) {
+        if (loans.isEmpty()) {
+            System.out.println("[Aviso: Não há empréstimos registrados.]");
+            return;
+        }
+
+        System.out.println("Equipamentos emprestados:");
+        for (Loan loan : loans) {
+            if (loan.getUser().equals(loggedInUser)) {
+                System.out.println("- " + loan.getEquipment().getName());
+            }
+        }
+
+        System.out.print("Escolha um equipamento para devolver: ");
+        String equipmentName = sc.nextLine();
+
+        for (Loan loan : loans) {
+            if (loan.getEquipment().getName().equalsIgnoreCase(equipmentName) && loan.getUser().equals(loggedInUser)) {
+                loan.getEquipment().returnEquipment();
+                loans.remove(loan);
+                System.out.println("[Aviso: Equipamento devolvido com sucesso!]");
+                return;
+            }
+        }
+
+        System.out.println("[Aviso: Equipamento não encontrado nos seus empréstimos.]");
     }
 }
