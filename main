@@ -4,12 +4,11 @@ import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.stream.Collectors;
 
 public class Main {
     private static List<Equipment> equipmentList = new ArrayList<>();
     private static List<Loan> loans = new ArrayList<>();
-    private static User loggedInUser = null; // Variável para armazenar o usuário logado
+    private static User loggedInUser = null;
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
@@ -22,24 +21,24 @@ public class Main {
             System.out.println("3. Sair");
 
             System.out.print("[ENTER]: ");
-            int option = sc.nextInt();
-            sc.nextLine();
+            int option = readInt(sc);
+            sc.nextLine(); // Consome o ENTER
             clean();
 
             switch (option) {
-                case 1: 
+                case 1:
                     cadaster(sc, users);
                     break;
-                case 2: 
+                case 2:
                     if (login(sc, users)) {
                         userMenu(sc, users);
                     }
                     break;
-                case 3: 
+                case 3:
                     System.out.println("Saindo do sistema...");
                     sc.close();
                     return;
-                default: 
+                default:
                     System.out.println("[Aviso: Opção inválida.]");
             }
             clean();
@@ -52,28 +51,36 @@ public class Main {
             System.out.println("1. Cadastrar Equipamento");
             System.out.println("2. Emprestar Equipamento");
             System.out.println("3. Devolver Equipamento");
-            System.out.println("4. Sair");
+            System.out.println("4. Listar Equipamentos Disponíveis");
+            System.out.println("5. Listar Equipamentos Emprestados");
+            System.out.println("6. Sair");
 
             System.out.print("[ENTER]: ");
-            int option = sc.nextInt();
-            sc.nextLine();
+            int option = readInt(sc);
+            sc.nextLine(); // Consome o ENTER
             clean();
 
             switch (option) {
-                case 1: 
+                case 1:
                     registerEquipment(sc);
                     break;
-                case 2: 
+                case 2:
                     borrowEquipment(sc, users);
                     break;
-                case 3: 
+                case 3:
                     returnEquipment(sc, users);
                     break;
-                case 4: 
+                case 4:
+                    listEquipment();
+                    break;
+                case 5:
+                    listBorrowedItems(); // Nova opção para listar objetos emprestados
+                    break;
+                case 6:
                     System.out.println("Desconectando...");
-                    loggedInUser = null; // Limpa a sessão do usuário
-                    return; // Retorna ao menu principal
-                default: 
+                    loggedInUser = null;
+                    return;
+                default:
                     System.out.println("[Aviso: Opção inválida.]");
             }
             clean();
@@ -83,7 +90,7 @@ public class Main {
     public static boolean login(Scanner sc, List<User> users) {
         System.out.print("Nome: ");
         String name = sc.nextLine();
-
+        
         System.out.print("Senha: ");
         String password = sc.nextLine();
 
@@ -91,7 +98,7 @@ public class Main {
             if (user.getName().equalsIgnoreCase(name) && user instanceof Account) {
                 Account account = (Account) user;
                 if (account.getPassword().equals(password)) {
-                    loggedInUser = account; // Armazena o usuário logado
+                    loggedInUser = account;
                     System.out.println("[Aviso: Login bem-sucedido!]");
                     return true;
                 }
@@ -116,7 +123,7 @@ public class Main {
         System.out.print("Nome: ");
         String name = sc.nextLine();
         while (name.isEmpty()) {
-            System.out.println("[Aviso: O nome está vazio, preencha o nome..]");
+            System.out.println("[Aviso: O nome está vazio, preencha o nome.]");
             System.out.print("Nome: ");
             name = sc.nextLine();
         }
@@ -131,8 +138,12 @@ public class Main {
 
         System.out.print("CPF: ");
         String cpf = sc.nextLine();
-        while (!isValidCPF(cpf)) {
-            System.out.println("[Aviso: Seu CPF é inválido, insira novamente...]");
+        while (!isValidCPF(cpf) || cpfExists(users, cpf)) {
+            if (!isValidCPF(cpf)) {
+                System.out.println("[Aviso: Seu CPF é inválido, insira novamente...]");
+            } else {
+                System.out.println("[Aviso: CPF já cadastrado, insira outro...]");
+            }
             System.out.print("CPF: ");
             cpf = sc.nextLine();
         }
@@ -147,15 +158,60 @@ public class Main {
     }
 
     public static boolean isValidCPF(String cpf) {
-        return cpf.matches("\\d{11}"); // Simples verificação de formato
+        return cpf.matches("\\d{11}");
+    }
+
+    public static boolean cpfExists(List<User> users, String cpf) {
+        for (User user : users) {
+            if (user.getCPF().equals(cpf)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void registerEquipment(Scanner sc) {
         System.out.print("Nome do Equipamento: ");
         String equipmentName = sc.nextLine();
-        Equipment newEquipment = new Equipment(equipmentName);
+
+        System.out.println("Selecione o estado do equipamento:");
+        System.out.println("1. Novo");
+        System.out.println("2. Usado");
+        System.out.println("3. Em manutenção");
+
+        int stateOption = readInt(sc);
+        Equipment.EquipmentState state;
+
+        switch (stateOption) {
+            case 1:
+                state = Equipment.EquipmentState.NEW;
+                break;
+            case 2:
+                state = Equipment.EquipmentState.USED;
+                break;
+            case 3:
+                state = Equipment.EquipmentState.MAINTENANCE;
+                break;
+            default:
+                System.out.println("[Aviso: Opção inválida. Equipamento definido como Usado.]");
+                state = Equipment.EquipmentState.USED;
+        }
+
+        Equipment newEquipment = new Equipment(equipmentName, state);
         equipmentList.add(newEquipment);
         System.out.println("[Aviso: Equipamento " + equipmentName + " cadastrado com sucesso!]");
+    }
+
+    public static void listEquipment() {
+        if (equipmentList.isEmpty()) {
+            System.out.println("[Aviso: Não há equipamentos cadastrados.]");
+            return;
+        }
+
+        System.out.println("Equipamentos disponíveis para empréstimo:");
+        for (Equipment equipment : equipmentList) {
+            equipment.displayInfo();
+        }
     }
 
     public static void borrowEquipment(Scanner sc, List<User> users) {
@@ -183,7 +239,6 @@ public class Main {
             if (equipment.getName().equalsIgnoreCase(equipmentName) && equipment.isAvailable()) {
                 equipment.borrow();
 
-                // Solicita a data de devolução
                 LocalDate returnDate = null;
                 while (returnDate == null) {
                     System.out.print("Digite a data de devolução (formato: dd/MM/yyyy): ");
@@ -192,7 +247,7 @@ public class Main {
                         returnDate = LocalDate.parse(dateInput, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
                         if (returnDate.isBefore(LocalDate.now())) {
                             System.out.println("[Aviso: A data de devolução não pode ser anterior a hoje.]");
-                            returnDate = null; // Reinicia a variável para solicitar novamente
+                            returnDate = null;
                         }
                     } catch (DateTimeParseException e) {
                         System.out.println("[Aviso: Formato de data inválido. Tente novamente.]");
@@ -222,7 +277,7 @@ public class Main {
             }
         }
 
-        System.out.print("Escolha um equipamento para devolver: ");
+        System.out.print("Digite o nome do equipamento para devolver: ");
         String equipmentName = sc.nextLine();
 
         for (Loan loan : loans) {
@@ -234,6 +289,28 @@ public class Main {
             }
         }
 
-        System.out.println("[Aviso: Equipamento não encontrado nos seus empréstimos.]");
+        System.out.println("[Aviso: Equipamento não encontrado nos empréstimos.]");
+    }
+
+    public static void listBorrowedItems() {
+        if (loans.isEmpty()) {
+            System.out.println("[Aviso: Não há empréstimos registrados.]");
+            return;
+        }
+
+        System.out.println("Objetos emprestados:");
+        for (Loan loan : loans) {
+            System.out.println("- " + loan.getEquipment().getName() + " está com " + loan.getUser().getName());
+        }
+    }
+
+    public static int readInt(Scanner sc) {
+        while (true) {
+            try {
+                return Integer.parseInt(sc.nextLine());
+            } catch (NumberFormatException e) {
+                System.out.println("[Aviso: Por favor, insira um número válido.]");
+            }
+        }
     }
 }
